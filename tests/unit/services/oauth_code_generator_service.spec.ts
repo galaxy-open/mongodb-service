@@ -2,51 +2,35 @@ import { test } from '@japa/runner'
 import CodeGeneratorService from '#services/code_generator_service'
 
 test.group('CodeGeneratorService', () => {
-  test('should generate an authorization code', async ({ assert }) => {
+  test('should generate a secure password', async ({ assert }) => {
     const service = new CodeGeneratorService()
-    const code = service.generateAuthorizationCode()
+    const password = service.generatePassword()
 
-    assert.isString(code)
-    assert.isAbove(code.length, 0)
+    assert.isString(password)
+    assert.equal(password.length, 16) // Default length
   })
 
-  test('should generate an access token', async ({ assert }) => {
+  test('should generate password with custom length', async ({ assert }) => {
     const service = new CodeGeneratorService()
-    const token = service.generateAccessToken()
+    const password = service.generatePassword(24)
 
-    assert.isString(token)
-    assert.isAbove(token.length, 0)
+    assert.isString(password)
+    assert.equal(password.length, 24)
   })
 
-  test('should generate a refresh token', async ({ assert }) => {
+  test('should generate MongoDB replica key', async ({ assert }) => {
     const service = new CodeGeneratorService()
-    const token = service.generateRefreshToken()
+    const replicaKey = service.generateMongoReplicaKey()
 
-    assert.isString(token)
-    assert.isAbove(token.length, 0)
+    assert.isString(replicaKey)
+    assert.equal(replicaKey.length, 12) // Base64 encoded 9 bytes = 12 chars
   })
 
-  test('should generate a token pair', async ({ assert }) => {
+  test('should generate unique passwords', async ({ assert }) => {
     const service = new CodeGeneratorService()
-    const { accessToken, refreshToken } = service.generateTokenPair()
+    const password1 = service.generatePassword()
+    const password2 = service.generatePassword()
 
-    assert.isString(accessToken)
-    assert.isString(refreshToken)
-    assert.isAbove(accessToken.length, 0)
-    assert.isAbove(refreshToken.length, 0)
-    assert.notEqual(accessToken, refreshToken)
-  })
-
-  test('should generate unique codes each time', async ({ assert }) => {
-    const service = new CodeGeneratorService()
-
-    const code1 = service.generateAuthorizationCode()
-    const code2 = service.generateAuthorizationCode()
-    const token1 = service.generateAccessToken()
-    const token2 = service.generateAccessToken()
-
-    assert.notEqual(code1, code2)
-    assert.notEqual(token1, token2)
-    assert.notEqual(code1, token1)
+    assert.notEqual(password1, password2)
   })
 })

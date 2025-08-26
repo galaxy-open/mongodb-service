@@ -30,7 +30,7 @@ test.group('OAuth Flow', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: testClient.clientId,
+        client_id: testClient.id,
         response_type: 'code',
         redirect_uri: testClient.redirectUris[0],
         scope: 'read write',
@@ -47,7 +47,7 @@ test.group('OAuth Flow', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: trustedClient.clientId,
+        client_id: trustedClient.id,
         response_type: 'code',
         redirect_uri: trustedClient.redirectUris[0],
         state: 'test-state-123',
@@ -61,7 +61,7 @@ test.group('OAuth Flow', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: 'invalid-client-id',
+        client_id: '00000000-0000-0000-0000-000000000000', // Valid UUID format that doesn't exist
         response_type: 'code',
         redirect_uri: testClient.redirectUris[0],
       })
@@ -77,7 +77,7 @@ test.group('OAuth Flow', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: testClient.clientId,
+        client_id: testClient.id,
         response_type: 'code',
         redirect_uri: 'https://malicious-site.com/callback',
       })
@@ -93,7 +93,7 @@ test.group('OAuth Flow', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: testClient.clientId,
+        client_id: testClient.id,
         response_type: 'token', // Not supported
         redirect_uri: testClient.redirectUris[0],
       })
@@ -131,7 +131,7 @@ test.group('OAuth Flow', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: testClient.clientId,
+        client_id: testClient.id,
         redirect_uri: 'https://example.com/callback',
       })
       .loginAs(testUser)
@@ -150,7 +150,7 @@ test.group('OAuth Flow', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: testClient.clientId,
+        client_id: testClient.id,
         response_type: 'code',
       })
       .loginAs(testUser)
@@ -175,7 +175,7 @@ test.group('OAuth Flow', (group) => {
     const response1 = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: multiUriClient.clientId,
+        client_id: multiUriClient.id,
         response_type: 'code',
         redirect_uri: 'https://example.com/callback',
       })
@@ -187,7 +187,7 @@ test.group('OAuth Flow', (group) => {
     const response2 = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: multiUriClient.clientId,
+        client_id: multiUriClient.id,
         response_type: 'code',
         redirect_uri: 'https://app.example.com/oauth/callback',
       })
@@ -200,7 +200,7 @@ test.group('OAuth Flow', (group) => {
     // Create persistent consent for this user/client combination
     await OauthConsent.create({
       userId: testUser.id,
-      clientId: testClient.clientId,
+      clientId: testClient.id,
       scopes: [
         Object.keys(oauthScopesConfig.scopes)[0], // database:read
         Object.keys(oauthScopesConfig.scopes)[1], // database:write
@@ -213,7 +213,7 @@ test.group('OAuth Flow', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: testClient.clientId,
+        client_id: testClient.id,
         response_type: 'code',
         redirect_uri: testClient.redirectUris[0],
         scope: `${Object.keys(oauthScopesConfig.scopes)[0]} ${Object.keys(oauthScopesConfig.scopes)[1]}`,
@@ -229,7 +229,7 @@ test.group('OAuth Flow', (group) => {
     // Create expired consent
     await OauthConsent.create({
       userId: testUser.id,
-      clientId: testClient.clientId,
+      clientId: testClient.id,
       scopes: [Object.keys(oauthScopesConfig.scopes)[0]], // database:read
       grantedAt: DateTime.now().minus({ days: 60 }),
       expiresAt: DateTime.now().minus({ days: 30 }), // Expired 30 days ago
@@ -239,7 +239,7 @@ test.group('OAuth Flow', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: testClient.clientId,
+        client_id: testClient.id,
         response_type: 'code',
         redirect_uri: testClient.redirectUris[0],
         scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -255,7 +255,7 @@ test.group('OAuth Flow', (group) => {
     // Create revoked consent
     await OauthConsent.create({
       userId: testUser.id,
-      clientId: testClient.clientId,
+      clientId: testClient.id,
       scopes: [Object.keys(oauthScopesConfig.scopes)[0]], // database:read
       grantedAt: DateTime.now(),
       expiresAt: DateTime.now().plus({ days: 30 }),
@@ -265,7 +265,7 @@ test.group('OAuth Flow', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: testClient.clientId,
+        client_id: testClient.id,
         response_type: 'code',
         redirect_uri: testClient.redirectUris[0],
         scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -283,7 +283,7 @@ test.group('OAuth Flow', (group) => {
     // Create consent for limited scope
     await OauthConsent.create({
       userId: testUser.id,
-      clientId: testClient.clientId,
+      clientId: testClient.id,
       scopes: [Object.keys(oauthScopesConfig.scopes)[0]], // database:read
       grantedAt: DateTime.now(),
       expiresAt: DateTime.now().plus({ days: 30 }),
@@ -293,7 +293,7 @@ test.group('OAuth Flow', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: testClient.clientId,
+        client_id: testClient.id,
         response_type: 'code',
         redirect_uri: testClient.redirectUris[0],
         scope: `${Object.keys(oauthScopesConfig.scopes)[0]} ${Object.keys(oauthScopesConfig.scopes)[1]}`, // Requesting broader scope
@@ -309,7 +309,7 @@ test.group('OAuth Flow', (group) => {
     // Create consent for broad scope
     await OauthConsent.create({
       userId: testUser.id,
-      clientId: testClient.clientId,
+      clientId: testClient.id,
       scopes: [
         Object.keys(oauthScopesConfig.scopes)[0], // database:read
         Object.keys(oauthScopesConfig.scopes)[1], // database:write
@@ -323,7 +323,7 @@ test.group('OAuth Flow', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: testClient.clientId,
+        client_id: testClient.id,
         response_type: 'code',
         redirect_uri: testClient.redirectUris[0],
         scope: Object.keys(oauthScopesConfig.scopes)[0], // Requesting subset
@@ -417,7 +417,7 @@ test.group('OAuth JIT Provisioning', (group) => {
     const idTokenHint = await createValidJWT(jwtData)
 
     const response = await client.get('/oauth/authorize').qs({
-      client_id: testClient.clientId,
+      client_id: testClient.id,
       response_type: 'code',
       redirect_uri: testClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -453,7 +453,7 @@ test.group('OAuth JIT Provisioning', (group) => {
     const idTokenHint = await createValidJWT(jwtData)
 
     const response = await client.get('/oauth/authorize').qs({
-      client_id: testClient.clientId,
+      client_id: testClient.id,
       response_type: 'code',
       redirect_uri: testClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -488,7 +488,7 @@ test.group('OAuth JIT Provisioning', (group) => {
     const idTokenHint = await createValidJWT(jwtData)
 
     const response = await client.get('/oauth/authorize').qs({
-      client_id: testClient.clientId,
+      client_id: testClient.id,
       response_type: 'code',
       redirect_uri: testClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -518,7 +518,7 @@ test.group('OAuth JIT Provisioning', (group) => {
     const idTokenHint = await createValidJWT(jwtData)
 
     const response = await client.get('/oauth/authorize').qs({
-      client_id: trustedClient.clientId,
+      client_id: trustedClient.id,
       response_type: 'code',
       redirect_uri: trustedClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -538,7 +538,7 @@ test.group('OAuth JIT Provisioning', (group) => {
     const invalidToken = 'invalid.jwt.token'
 
     const response = await client.get('/oauth/authorize').qs({
-      client_id: testClient.clientId,
+      client_id: testClient.id,
       response_type: 'code',
       redirect_uri: testClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -559,7 +559,7 @@ test.group('OAuth JIT Provisioning', (group) => {
     const idTokenHint = await createValidJWT(jwtData)
 
     const response = await client.get('/oauth/authorize').qs({
-      client_id: testClient.clientId,
+      client_id: testClient.id,
       response_type: 'code',
       redirect_uri: testClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -584,7 +584,7 @@ test.group('OAuth JIT Provisioning', (group) => {
     const response = await client
       .get('/oauth/authorize')
       .qs({
-        client_id: testClient.clientId,
+        client_id: testClient.id,
         response_type: 'code',
         redirect_uri: testClient.redirectUris[0],
         scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -604,7 +604,7 @@ test.group('OAuth JIT Provisioning', (group) => {
     const malformedToken = 'not.a.jwt'
 
     const response = await client.get('/oauth/authorize').qs({
-      client_id: testClient.clientId,
+      client_id: testClient.id,
       response_type: 'code',
       redirect_uri: testClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -715,7 +715,7 @@ test.group('OAuth JIT Organization Provisioning', (group) => {
     const idTokenHint = await createValidJWTWithOrganization(jwtData)
 
     const response = await client.get('/oauth/authorize').qs({
-      client_id: testClient.clientId,
+      client_id: testClient.id,
       response_type: 'code',
       redirect_uri: testClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -788,7 +788,7 @@ test.group('OAuth JIT Organization Provisioning', (group) => {
     const idTokenHint = await createValidJWTWithOrganization(jwtData)
 
     const response = await client.get('/oauth/authorize').qs({
-      client_id: testClient.clientId,
+      client_id: testClient.id,
       response_type: 'code',
       redirect_uri: testClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -859,7 +859,7 @@ test.group('OAuth JIT Organization Provisioning', (group) => {
     const idTokenHint = await createValidJWTWithOrganization(jwtData)
 
     const response = await client.get('/oauth/authorize').qs({
-      client_id: testClient.clientId,
+      client_id: testClient.id,
       response_type: 'code',
       redirect_uri: testClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -928,7 +928,7 @@ test.group('OAuth JIT Organization Provisioning', (group) => {
     const idTokenHint = await createValidJWTWithOrganization(jwtData)
 
     const response = await client.get('/oauth/authorize').qs({
-      client_id: testClient.clientId,
+      client_id: testClient.id,
       response_type: 'code',
       redirect_uri: testClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -970,7 +970,7 @@ test.group('OAuth JIT Organization Provisioning', (group) => {
 
     // Step 1: Get authorization code (should auto-approve for trusted client)
     const authResponse = await client.get('/oauth/authorize').qs({
-      client_id: trustedClient.clientId,
+      client_id: trustedClient.id,
       response_type: 'code',
       redirect_uri: trustedClient.redirectUris[0],
       scope: `${Object.keys(oauthScopesConfig.scopes)[0]} ${Object.keys(oauthScopesConfig.scopes)[1]}`, // database:read database:write
@@ -1006,7 +1006,7 @@ test.group('OAuth JIT Organization Provisioning', (group) => {
 
     // Get initial tokens with organization context
     const authResponse = await client.get('/oauth/authorize').qs({
-      client_id: trustedClient.clientId,
+      client_id: trustedClient.id,
       response_type: 'code',
       redirect_uri: trustedClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read
@@ -1035,7 +1035,7 @@ test.group('OAuth JIT Organization Provisioning', (group) => {
     const idTokenHint = await createValidJWTWithOrganization(jwtData)
 
     const response = await client.get('/oauth/authorize').qs({
-      client_id: testClient.clientId,
+      client_id: testClient.id,
       response_type: 'code',
       redirect_uri: testClient.redirectUris[0],
       scope: Object.keys(oauthScopesConfig.scopes)[0], // database:read

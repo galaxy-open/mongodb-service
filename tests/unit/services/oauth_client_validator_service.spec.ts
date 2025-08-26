@@ -46,11 +46,11 @@ test.group('OAuthClientValidatorService | Unit', (group) => {
     assert,
   }) => {
     const fakeClient = {
-      clientId: 'client-1',
+      id: 'client-uuid-1',
       redirectUris: ['https://client.app/correct-callback'],
-    } as OAuthClient
+    } as unknown as OAuthClient
     const fakeParams = {
-      client_id: fakeClient.clientId,
+      client_id: fakeClient.id,
       redirect_uri: 'https://client.app/wrong-callback',
     } as OAuthParams
     clientRepoStub.findById.resolves(fakeClient)
@@ -67,11 +67,11 @@ test.group('OAuthClientValidatorService | Unit', (group) => {
 
   test('validate :: should return the client on successful validation', async ({ assert }) => {
     const fakeClient = {
-      clientId: 'client-1',
+      id: 'client-uuid-1',
       redirectUris: ['https://client.app/callback'],
-    } as OAuthClient
+    } as unknown as OAuthClient
     const fakeParams = {
-      client_id: fakeClient.clientId,
+      client_id: fakeClient.id,
       redirect_uri: fakeClient.redirectUris[0],
     } as OAuthParams
     clientRepoStub.findById.resolves(fakeClient)
@@ -79,6 +79,6 @@ test.group('OAuthClientValidatorService | Unit', (group) => {
     const result = await service.validate(fakeParams)
 
     assert.deepEqual(result, fakeClient)
-    assert.isTrue(clientRepoStub.findById.calledOnceWith(fakeClient.clientId))
+    assert.isTrue(clientRepoStub.findById.calledOnceWith(fakeClient.id))
   })
 })

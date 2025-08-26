@@ -35,7 +35,7 @@ test.group('OAuthConsentDataService | Unit', (group) => {
     })
 
     fakeClient = await OAuthClientFactory.merge({
-      clientId: fakeParams.client_id,
+      id: fakeParams.client_id,
       clientName: 'Test Client',
     }).make()
 
