@@ -1,0 +1,59 @@
+version: "3.7"
+
+services:
+  mongodb-exporter:
+    image: bitnami/mongodb-exporter:0.40.0
+    environment:
+      MONGODB_URI: '{{ databaseURI }}'
+      MONGODB_EXPORT_SCRAPE_INTERVAL_SECONDS: 15
+    labels:
+      - "metric_source=mongo-exporter"
+      - "service_name={{ stackName }}"
+      - "mongo-type={{ exporterType }}"
+      - "target_node={{ databaseWorkerNodeName }}"
+      - "stack_group=exporters"
+    command:
+      - "--collector.dbstats" 
+      - "--collector.diagnosticdata"
+    deploy:
+      placement:
+        constraints:
+          - node.labels.mongodb_exporter == true
+    ports:
+      - target: 9216
+        published: {{ exporterPort }}
+        protocol: tcp
+        mode: host
+    networks:
+      - database
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-async-connect: 'true'
+        fluentd-address: "{{ fluentdAddress }}"
+  profiler-exporter:
+    image: andriik/mongodb-profiler-exporter:latest
+    environment:
+      MONGODB_URI: '{{ databaseURI }}'
+    deploy:
+      placement:
+        constraints:
+          - node.labels.mongodb_exporter == true
+    labels:
+      - "metric_source=profiler-exporter"
+      - "service_name={{ stackName }}"
+    ports:
+      - target: 9179
+        published: {{ profilerPort }}
+        protocol: tcp
+        mode: host
+    networks:
+      - database
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-async-connect: 'true'
+        fluentd-address: "{{ fluentdAddress }}"
+networks:
+  database:
+    external: true

@@ -1,0 +1,89 @@
+version: "3.7"
+
+services:
+@each((workerNode, index) in workerNodes)
+  "{{ index + 1 }}":
+    image: mongodb:{{ databaseVersion }}
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: {{ adminPassword }}
+    labels:
+      - "tls={{ tlsMode }}"
+      - "cert-content={{ certLabel }}"
+      - "disk-limit={{ diskGb }}"
+      - "region={{ regionCode }}"
+      - "instance_size={{ instanceSize }}"
+      - "stack_group=database"
+      - "database_type=mongodb"
+      - "replica_member={{ index + 1 }}"
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.mongodb == true
+          - node.labels.mongodb_node_id == {{ workerNode.workerNumber }}
+      resources:
+        limits:
+          cpus: '{{ cpuResources }}'
+          memory: {{ memoryGb }}
+    ports:
+      - target: 27017
+        published: {{ port }}
+        mode: host
+    networks:
+      - database
+    command: {{ command }} --replSet {{ stackName }}
+    volumes:
+      - replica{{ index + 1 }}_data:/data/db
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-async-connect: 'true'
+        fluentd-address: "{{ fluentdAddress }}"
+@if(tlsEnabled)
+    secrets:
+  @each(secret in secrets)
+      - source: {{ secret.source }}
+        target: {{ secret.target }}
+        uid: "999"
+        gid: "999"
+        mode: 0400
+  @end
+      - source: {{ replicaKeySecretName }}
+        target: {{ replicaKeySecretName }}
+        uid: "999"
+        gid: "999"
+        mode: 0400
+@else
+    secrets:
+      - source: {{ replicaKeySecretName }}
+        target: {{ replicaKeySecretName }}
+        uid: "999"
+        gid: "999"
+        mode: 0400
+@end
+@end
+
+networks:
+  database:
+    external: true
+
+volumes:
+@each((workerNode, index) in workerNodes)
+  replica{{ index + 1 }}_data:
+    driver: local
+    driver_opts:
+      size: {{ diskGb }}
+@end
+
+secrets:
+  {{ replicaKeySecretName }}:
+    external: true
+    name: {{ replicaKeySecretName }}
+@if(tlsEnabled)
+  @each(secret in secretsConfig)
+  {{ secret.name }}:
+    external: true
+    name: {{ secret.name }}
+  @end
+@end

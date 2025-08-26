@@ -1,0 +1,16 @@
+{{#var className = generators.serviceName(entity.name)}}
+{{#var contractName = string(entity.name).pascalCase().suffix('ServiceContract').toString()}}
+{{#var fileName = string(className).snakeCase().removeSuffix('service').suffix('_service').ext('.ts').toString()}}
+{{{
+  exports({
+    to: app.makePath('app/services', entity.path, fileName)
+  })
+}}}
+import { inject } from '@adonisjs/core'
+
+@inject()
+export default class {{ className }} {
+  constructor() {}
+
+  // Implement your service methods here
+}

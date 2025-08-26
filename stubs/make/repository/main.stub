@@ -1,0 +1,56 @@
+{{#var className = generators.repositoryName(entity.name)}}
+{{#var contractName = string(className).removeSuffix('Repository').suffix('RepositoryContract').toString()}}
+{{#var fileName = string(className).snakeCase().removeSuffix('repository').suffix('_repository').ext('.ts').toString()}}
+{{{
+  exports({
+    to: app.makePath('app/repositories', entity.path, fileName)
+  })
+}}}
+import {{ modelName }} from '#models/{{ modelImportName }}'
+
+export default class {{ className }} {
+  /**
+   * Retrieves a paginated list of {{ modelName }} instances.
+   */
+  public async findAll(page: number = 1, limit: number = 10): Promise<{{ modelName }}[]> {
+    const result = await {{ modelName }}.query().paginate(page, limit)
+    return result.all()
+  }
+
+  /**
+   * Retrieves a {{ modelName }} instance by its ID.
+   */
+  public async findById(id: string): Promise<{{ modelName }} | null> {
+    return {{ modelName }}.find(id)
+  }
+
+  /**
+   * Creates a new {{ modelName }} instance.
+   */
+  public async create(data: Partial<{{ modelName }}>): Promise<{{ modelName }}> {
+    return {{ modelName }}.create(data)
+  }
+
+  /**
+   * Updates an existing {{ modelName }} instance.
+   */
+  public async update(id: string, data: Partial<{{ modelName }}>): Promise<{{ modelName }} | null> {
+    const modelInstance = await this.findById(id)
+    if (!modelInstance) {
+      return null
+    }
+    modelInstance.merge(data)
+    await modelInstance.save()
+    return modelInstance
+  }
+
+  /**
+   * Deletes a {{ modelName }} instance by its ID.
+   */
+  public async delete(id: string): Promise<void> {
+    const modelInstance = await this.findById(id)
+    if (modelInstance) {
+      await modelInstance.delete()
+    }
+  }
+}

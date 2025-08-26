@@ -1,0 +1,40 @@
+{
+  "extends": "@adonisjs/tsconfig/tsconfig.app.json",
+  "compilerOptions": {
+    "rootDir": "./",
+    "outDir": "./build",
+    "baseUrl": ".",
+    "paths": {
+      "#factories/*": ["./database/factories/*"],
+      "#guards/*": ["./guards/*"],
+      "#stubs/*": ["./stubs/*"],
+      "#jobs/*": ["./app/jobs/*"],
+      "#repositories/*": ["./app/repositories/*"],
+      "#actions/*": ["./app/actions/*"],
+      "#enums/*": ["./app/enums/*"],
+      "#interfaces/*": ["./app/interfaces/*"],
+      "#controllers/*": ["./app/controllers/*"],
+      "#exceptions/*": ["./app/exceptions/*"],
+      "#models/*": ["./app/models/*"],
+      "#mails/*": ["./app/mails/*"],
+      "#services/*": ["./app/services/*"],
+      "#listeners/*": ["./app/listeners/*"],
+      "#events/*": ["./app/events/*"],
+      "#middleware/*": ["./app/middleware/*"],
+      "#validators/*": ["./app/validators/*"],
+      "#providers/*": ["./providers/*"],
+      "#policies/*": ["./app/policies/*"],
+      "#abilities/*": ["./app/abilities/*"],
+      "#database/*": ["./database/*"],
+      "#tests/*": ["./tests/*"],
+      "#start/*": ["./start/*"],
+      "#config/*": ["./config/*"]
+    }
+  },
+  "exclude": ["./inertia/**/*", "node_modules", "build"],
+  "include": [
+    "**/*.ts",
+    "**/*.js",
+    "./types/**/*.ts"
+  ]
+}
