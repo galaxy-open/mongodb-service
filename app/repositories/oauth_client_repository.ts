@@ -11,7 +11,7 @@ export default class OAuthClientRepository {
   }
 
   /**
-   * Retrieves an OAuthClient instance by its client ID.
+   * Retrieves an OAuthClient instance by its UUID.
    */
   public async findById(clientId: string): Promise<OAuthClient | null> {
     return OAuthClient.findBy({ id: clientId })

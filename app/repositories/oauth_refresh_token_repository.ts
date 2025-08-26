@@ -1,5 +1,4 @@
 import OAuthRefreshToken from '#models/oauth_refresh_token'
-import hash from '@adonisjs/core/services/hash'
 import { DateTime } from 'luxon'
 
 export default class OAuthRefreshTokenRepository {
@@ -12,46 +11,38 @@ export default class OAuthRefreshTokenRepository {
   }
 
   /**
-   * Retrieves an OAuthRefreshToken instance by its token hash.
+   * Retrieves an OAuthRefreshToken instance by its UUID.
    */
-  public async findByTokenHash(tokenHash: string): Promise<OAuthRefreshToken | null> {
-    return OAuthRefreshToken.find(tokenHash)
+  public async findByToken(token: string): Promise<OAuthRefreshToken | null> {
+    return OAuthRefreshToken.find(token)
   }
 
   /**
-   * Creates a new OAuthRefreshToken instance with a hashed token.
+   * Creates a new OAuthRefreshToken instance (UUID generated automatically).
    */
-  public async create(
-    data: Partial<OAuthRefreshToken> & { token: string }
-  ): Promise<OAuthRefreshToken> {
-    const { token, ...tokenData } = data
-    const tokenHash = await hash.make(token)
-
-    return OAuthRefreshToken.create({
-      ...tokenData,
-      tokenHash,
-    })
+  public async create(data: Partial<OAuthRefreshToken>): Promise<OAuthRefreshToken> {
+    return OAuthRefreshToken.create(data)
   }
 
   /**
    * Finds and validates a refresh token.
    */
   public async findAndValidate(token: string): Promise<OAuthRefreshToken | null> {
-    return this.findByToken(token)
+    return this.findByTokenWithRelations(token)
   }
 
   /**
-   * Finds refresh token by access token hash.
+   * Finds refresh token by access token ID.
    */
-  public async findByAccessToken(accessTokenHash: string): Promise<OAuthRefreshToken | null> {
-    return OAuthRefreshToken.query().where('access_token_hash', accessTokenHash).first()
+  public async findByAccessToken(accessTokenId: string): Promise<OAuthRefreshToken | null> {
+    return OAuthRefreshToken.query().where('access_token_id', accessTokenId).first()
   }
 
   /**
    * Revokes a refresh token.
    */
-  public async revoke(tokenHash: string): Promise<OAuthRefreshToken | null> {
-    const token = await this.findByTokenHash(tokenHash)
+  public async revoke(tokenId: string): Promise<OAuthRefreshToken | null> {
+    const token = await this.findByToken(tokenId)
     if (!token) {
       return null
     }
@@ -91,37 +82,28 @@ export default class OAuthRefreshTokenRepository {
   }
 
   /**
-   * Deletes an OAuthRefreshToken instance by its token hash.
+   * Deletes an OAuthRefreshToken instance by its token ID.
    */
-  public async delete(tokenHash: string): Promise<void> {
-    const modelInstance = await this.findByTokenHash(tokenHash)
+  public async delete(tokenId: string): Promise<void> {
+    const modelInstance = await this.findByToken(tokenId)
     if (modelInstance) {
       await modelInstance.delete()
     }
   }
 
   /**
-   * Finds a refresh token by the actual token value (validates hash).
+   * Finds a refresh token with relations - PERFORMANCE FIX: Direct UUID lookup.
    */
-  public async findByToken(token: string): Promise<OAuthRefreshToken | null> {
-    try {
-      const potentialMatches = await OAuthRefreshToken.query()
-        .where('is_revoked', false)
-        .where(function (query) {
-          query.whereNull('expires_at').orWhere('expires_at', '>', DateTime.now().toSQL())
-        })
-        .preload('user')
-        .preload('client')
-
-      for (const tokenRecord of potentialMatches) {
-        const isValid = await hash.verify(tokenRecord.tokenHash, token)
-        if (isValid) {
-          return tokenRecord
-        }
-      }
-      return null
-    } catch {
-      return null
-    }
+  public async findByTokenWithRelations(token: string): Promise<OAuthRefreshToken | null> {
+    return OAuthRefreshToken.query()
+      .where('id', token)
+      .where('is_revoked', false)
+      .where(function (query) {
+        query.whereNull('expires_at').orWhere('expires_at', '>', DateTime.now().toSQL())
+      })
+      .preload('user')
+      .preload('client')
+      .preload('organization')
+      .first()
   }
 }

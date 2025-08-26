@@ -1,6 +1,5 @@
 import OAuthAuthorizationCode from '#models/oauth_authorization_code'
 import { DateTime } from 'luxon'
-import hash from '@adonisjs/core/services/hash'
 
 export default class OAuthAuthorizationCodeRepository {
   /**
@@ -12,25 +11,17 @@ export default class OAuthAuthorizationCodeRepository {
   }
 
   /**
-   * Retrieves an OAuthAuthorizationCode instance by its code hash.
+   * Retrieves an OAuthAuthorizationCode instance by its UUID.
    */
-  public async findByCodeHash(codeHash: string): Promise<OAuthAuthorizationCode | null> {
-    return OAuthAuthorizationCode.find(codeHash)
+  public async findByCode(code: string): Promise<OAuthAuthorizationCode | null> {
+    return OAuthAuthorizationCode.find(code)
   }
 
   /**
-   * Creates a new OAuthAuthorizationCode instance with hashed code.
+   * Creates a new OAuthAuthorizationCode instance (UUID generated automatically).
    */
-  public async create(
-    data: Partial<OAuthAuthorizationCode> & { code: string }
-  ): Promise<OAuthAuthorizationCode> {
-    const { code, ...codeData } = data
-    const codeHash = await hash.make(code)
-
-    return OAuthAuthorizationCode.create({
-      ...codeData,
-      codeHash,
-    })
+  public async create(data: Partial<OAuthAuthorizationCode>): Promise<OAuthAuthorizationCode> {
+    return OAuthAuthorizationCode.create(data)
   }
 
   /**
@@ -56,22 +47,10 @@ export default class OAuthAuthorizationCodeRepository {
   }
 
   /**
-   * Marks a code as used by code hash.
-   */
-  public async markAsUsedByCode(code: string): Promise<OAuthAuthorizationCode | null> {
-    const codeRecord = await this.findByCode(code)
-    if (!codeRecord) {
-      return null
-    }
-
-    return this.markAsUsed(codeRecord.codeHash)
-  }
-
-  /**
    * Marks an authorization code as used.
    */
-  public async markAsUsed(codeHash: string): Promise<OAuthAuthorizationCode | null> {
-    const authCode = await this.findByCodeHash(codeHash)
+  public async markAsUsed(codeId: string): Promise<OAuthAuthorizationCode | null> {
+    const authCode = await this.findByCode(codeId)
     if (!authCode) {
       return null
     }
@@ -94,35 +73,26 @@ export default class OAuthAuthorizationCodeRepository {
   }
 
   /**
-   * Deletes an OAuthAuthorizationCode instance by its code hash.
+   * Deletes an OAuthAuthorizationCode instance by its code ID.
    */
-  public async delete(codeHash: string): Promise<void> {
-    const modelInstance = await this.findByCodeHash(codeHash)
+  public async delete(codeId: string): Promise<void> {
+    const modelInstance = await this.findByCode(codeId)
     if (modelInstance) {
       await modelInstance.delete()
     }
   }
 
   /**
-   * Finds an authorization code by the actual code value (validates hash).
+   * Finds an authorization code with relations - PERFORMANCE FIX: Direct UUID lookup.
    */
-  public async findByCode(code: string): Promise<OAuthAuthorizationCode | null> {
-    try {
-      const potentialMatches = await OAuthAuthorizationCode.query()
-        .where('is_used', false)
-        .where('expires_at', '>', DateTime.now().toSQL())
-        .preload('user')
-        .preload('client')
-
-      for (const codeRecord of potentialMatches) {
-        const isValid = await hash.verify(codeRecord.codeHash, code)
-        if (isValid) {
-          return codeRecord
-        }
-      }
-      return null
-    } catch {
-      return null
-    }
+  public async findByCodeWithRelations(code: string): Promise<OAuthAuthorizationCode | null> {
+    return OAuthAuthorizationCode.query()
+      .where('id', code)
+      .where('is_used', false)
+      .where('expires_at', '>', DateTime.now().toSQL())
+      .preload('user')
+      .preload('client')
+      .preload('organization')
+      .first()
   }
 }
