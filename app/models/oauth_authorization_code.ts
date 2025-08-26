@@ -9,7 +9,7 @@ export default class OAuthAuthorizationCode extends BaseModel {
   static table = 'oauth_authorization_codes'
 
   @column({ isPrimary: true })
-  declare codeHash: string
+  declare id: string
 
   @column()
   declare clientId: string

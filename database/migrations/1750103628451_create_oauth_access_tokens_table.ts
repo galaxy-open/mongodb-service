@@ -5,8 +5,12 @@ export default class extends BaseSchema {
 
   async up() {
     this.schema.createTable(this.tableName, (table) => {
-      table.string('token_hash').primary()
-      table.string('client_id').references('client_id').inTable('oauth_clients').onDelete('CASCADE')
+      table
+        .uuid('id')
+        .primary()
+        .defaultTo(this.db.rawQuery('gen_random_uuid()').knexQuery)
+        .notNullable()
+      table.uuid('client_id').references('id').inTable('oauth_clients').onDelete('CASCADE')
       table.uuid('user_id').references('id').inTable('users').onDelete('CASCADE')
       table
         .uuid('organization_id')
@@ -26,7 +30,7 @@ export default class extends BaseSchema {
       table.index(['organization_id', 'user_id'])
       table.index(['organization_id', 'client_id'])
       table.index('is_revoked')
-      table.index(['token_hash', 'is_revoked', 'expires_at']) // Composite for fast validation
+      table.index(['id', 'is_revoked', 'expires_at']) // Composite for fast validation
     })
   }
 
