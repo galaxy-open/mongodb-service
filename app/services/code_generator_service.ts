@@ -1,11 +1,6 @@
 import { inject } from '@adonisjs/core'
 import crypto from 'node:crypto'
 
-export interface TokenPair {
-  accessToken: string
-  refreshToken: string
-}
-
 @inject()
 export default class CodeGeneratorService {
   /**
@@ -22,45 +17,7 @@ export default class CodeGeneratorService {
   }
 
   /**
-   * Generate a secure authorization code
-   */
-  generateAuthorizationCode(): string {
-    return this.generateSecureCode()
-  }
-
-  /**
-   * Generate a secure access token
-   */
-  generateAccessToken(): string {
-    return this.generateSecureCode()
-  }
-
-  /**
-   * Generate a secure refresh token
-   */
-  generateRefreshToken(): string {
-    return this.generateSecureCode()
-  }
-
-  /**
-   * Generate both access and refresh tokens
-   */
-  generateTokenPair(): TokenPair {
-    return {
-      accessToken: this.generateAccessToken(),
-      refreshToken: this.generateRefreshToken(),
-    }
-  }
-
-  /**
-   * Generate a unique authorization code (alias for consistency)
-   */
-  generateUniqueCode(): string {
-    return this.generateAuthorizationCode()
-  }
-
-  /**
-   * Generate a secure password
+   * Generate a secure password for database instances
    */
   generatePassword(length: number = 16): string {
     return this.generateSecureCode(length)

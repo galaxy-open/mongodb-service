@@ -2,7 +2,6 @@ import { inject } from '@adonisjs/core'
 import { DateTime } from 'luxon'
 import logger from '@adonisjs/core/services/logger'
 import OAuthAuthorizationCodeRepository from '#repositories/oauth_authorization_code_repository'
-import CodeGeneratorService from '#services/code_generator_service'
 import OAuthTokenStorageService from '#services/oauth_token_storage_service'
 import InvalidOAuthRequestException from '#exceptions/invalid_oauth_request_exception'
 import { OAuthTokenParams } from '#validators/oauth_token'
@@ -13,7 +12,6 @@ import OAuthClient from '#models/oauth_client'
 export default class OAuthAuthorizationCodeGrantService {
   constructor(
     private authCodeRepository: OAuthAuthorizationCodeRepository,
-    private codeGenerator: CodeGeneratorService,
     private tokenStorage: OAuthTokenStorageService
   ) {}
 
@@ -31,7 +29,7 @@ export default class OAuthAuthorizationCodeGrantService {
     // Find and validate the authorization code
     const authCode = await this.authCodeRepository.findAndValidate(
       params.code,
-      client.clientId,
+      client.id,
       params.redirect_uri
     )
 
@@ -53,17 +51,11 @@ export default class OAuthAuthorizationCodeGrantService {
     }
 
     // Mark the authorization code as used
-    await this.authCodeRepository.markAsUsed(authCode.codeHash)
+    await this.authCodeRepository.markAsUsed(authCode.id)
 
-    // Generate tokens
-    const { accessToken, refreshToken } = this.codeGenerator.generateTokenPair()
     const scopes = authCode.scopes || []
-
-    // Store tokens
-    await this.tokenStorage.storeTokens({
-      accessToken,
-      refreshToken,
-      clientId: client.clientId,
+    const { accessTokenRecord, refreshTokenRecord } = await this.tokenStorage.storeTokens({
+      clientId: client.id,
       userId: authCode.userId,
       organizationId: authCode.organizationId,
       scopes,
@@ -71,13 +63,13 @@ export default class OAuthAuthorizationCodeGrantService {
       refreshTokenLifetime: client.refreshTokenLifetime,
     })
 
-    logger.info(`Access token created for user ${authCode.userId}, client ${client.clientId}`)
+    logger.info(`Access token created for user ${authCode.userId}, client ${client.id}`)
 
     return {
-      access_token: accessToken,
+      access_token: accessTokenRecord.id,
       token_type: 'Bearer',
       expires_in: client.accessTokenLifetime,
-      refresh_token: refreshToken,
+      refresh_token: refreshTokenRecord.id,
       scope: scopes.join(' '),
     }
   }

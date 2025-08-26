@@ -6,8 +6,6 @@ import OAuthAccessToken from '#models/oauth_access_token'
 import OAuthRefreshToken from '#models/oauth_refresh_token'
 
 export interface TokenStorageData {
-  accessToken: string
-  refreshToken: string
   clientId: string
   userId: string
   organizationId?: string | null
@@ -35,9 +33,8 @@ export default class OAuthTokenStorageService {
     const accessTokenExpiresAt = DateTime.now().plus({ seconds: data.accessTokenLifetime })
     const refreshTokenExpiresAt = DateTime.now().plus({ seconds: data.refreshTokenLifetime })
 
-    // Store access token
+    // Store access token (UUID generated automatically)
     const accessTokenRecord = await this.accessTokenRepository.create({
-      token: data.accessToken,
       clientId: data.clientId,
       userId: data.userId,
       organizationId: data.organizationId,
@@ -46,13 +43,12 @@ export default class OAuthTokenStorageService {
       expiresAt: accessTokenExpiresAt,
     })
 
-    // Store refresh token
+    // Store refresh token (UUID generated automatically)
     const refreshTokenRecord = await this.refreshTokenRepository.create({
-      token: data.refreshToken,
       clientId: data.clientId,
       userId: data.userId,
       organizationId: data.organizationId,
-      accessTokenHash: accessTokenRecord.tokenHash,
+      accessTokenId: accessTokenRecord.id,
       scopes: data.scopes,
       isRevoked: false,
       expiresAt: refreshTokenExpiresAt,
@@ -65,7 +61,6 @@ export default class OAuthTokenStorageService {
    * Store a new access token and link it to existing refresh token
    */
   async storeAccessToken(data: {
-    accessToken: string
     clientId: string
     userId: string
     organizationId?: string | null
@@ -75,7 +70,6 @@ export default class OAuthTokenStorageService {
     const accessTokenExpiresAt = DateTime.now().plus({ seconds: data.accessTokenLifetime })
 
     return this.accessTokenRepository.create({
-      token: data.accessToken,
       clientId: data.clientId,
       userId: data.userId,
       organizationId: data.organizationId,
@@ -86,10 +80,10 @@ export default class OAuthTokenStorageService {
   }
 
   /**
-   * Revoke an access token by its hash
+   * Revoke an access token by its UUID
    */
-  async revokeAccessToken(tokenHash: string): Promise<void> {
-    await this.accessTokenRepository.revoke(tokenHash)
+  async revokeAccessToken(tokenId: string): Promise<void> {
+    await this.accessTokenRepository.revoke(tokenId)
   }
 
   /**
@@ -97,9 +91,9 @@ export default class OAuthTokenStorageService {
    */
   async updateRefreshTokenAccessToken(
     refreshToken: OAuthRefreshToken,
-    newAccessTokenHash: string
+    newAccessTokenId: string
   ): Promise<void> {
-    refreshToken.accessTokenHash = newAccessTokenHash
+    refreshToken.accessTokenId = newAccessTokenId
     await refreshToken.save()
   }
 }
