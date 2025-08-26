@@ -5,6 +5,7 @@ import { BaseSeeder } from '@adonisjs/lucid/seeders'
 export default class extends BaseSeeder {
   async run() {
     await OAuthClient.create({
+      id: '2cfb378e-e728-4c95-b92d-fc69965b00cf',
       accessTokenLifetime: 3600,
       refreshTokenLifetime: 2592000,
       isTrusted: true,
