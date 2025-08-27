@@ -1,7 +1,7 @@
-import DefaultPortRange from '#enums/default_port_range'
-import RegionCodes from '#enums/region_codes'
 import DatabaseConnection from '#models/database_connection'
 import { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import RegionCodes from '#enums/region_codes'
+import DefaultPortRange from '#enums/default_port_range'
 
 export default class DatabaseConnectionRepository {
   /**
@@ -93,12 +93,14 @@ export default class DatabaseConnectionRepository {
     return newConnection
   }
 
-  public async findNextAvailablePort(regionCode: RegionCodes): Promise<number> {
+  /**
+   * Get the highest used port in a region
+   */
+  public async getHighestUsedPort(regionCode: RegionCodes): Promise<number | null> {
     const startPort = DefaultPortRange.Start
     const endPort = DefaultPortRange.End
 
-    // Get the highest used port in this region
-    const highestPortResult = await DatabaseConnection.query()
+    const result = await DatabaseConnection.query()
       .select('port')
       .where('region_code', regionCode)
       .whereNotNull('port')
@@ -107,17 +109,23 @@ export default class DatabaseConnectionRepository {
       .limit(1)
       .first()
 
-    // If no ports used, return start port
-    if (!highestPortResult || !highestPortResult.port) {
-      return startPort
-    }
+    return result?.port || null
+  }
 
-    const nextPort = highestPortResult.port + 1
+  /**
+   * Get all used ports in a region
+   */
+  public async getUsedPorts(regionCode: RegionCodes): Promise<number[]> {
+    const startPort = DefaultPortRange.Start
+    const endPort = DefaultPortRange.End
 
-    if (nextPort > endPort) {
-      throw new Error(`No available port found in range ${startPort}-${endPort}`)
-    }
+    const results = await DatabaseConnection.query()
+      .select('port')
+      .where('region_code', regionCode)
+      .whereNotNull('port')
+      .whereBetween('port', [startPort, endPort])
+      .orderBy('port', 'asc')
 
-    return nextPort
+    return results.map((r) => r.port).filter((port): port is number => port !== null)
   }
 }
