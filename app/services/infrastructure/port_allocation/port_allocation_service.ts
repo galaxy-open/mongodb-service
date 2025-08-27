@@ -130,9 +130,6 @@ export default class PortAllocationService {
             'Port allocation attempt failed, retrying with next batch...'
           )
         },
-        onSuccess: (attempt, totalTimeMs) => {
-          this.logger.info({ attempt, totalTimeMs, regionCode }, 'Port allocation succeeded')
-        },
       }
     )
   }
