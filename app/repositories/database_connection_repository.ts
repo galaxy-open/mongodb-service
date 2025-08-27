@@ -97,36 +97,22 @@ export default class DatabaseConnectionRepository {
     const startPort = DefaultPortRange.Start
     const endPort = DefaultPortRange.End
 
-    // Get all used ports in a single query, sorted - join with region to filter by region code
-    const connections = await DatabaseConnection.query()
+    // Get the highest used port in this region
+    const highestPortResult = await DatabaseConnection.query()
       .select('port')
       .where('region_code', regionCode)
       .whereNotNull('port')
       .whereBetween('port', [startPort, endPort])
-      .orderBy('port', 'asc')
-      .exec()
-
-    // Extract port numbers from the result
-    const usedPorts = connections
-      .map((conn) => conn.port)
-      .filter((port): port is number => port !== null)
+      .orderBy('port', 'desc')
+      .limit(1)
+      .first()
 
     // If no ports used, return start port
-    if (usedPorts.length === 0) {
+    if (!highestPortResult || !highestPortResult.port) {
       return startPort
     }
 
-    // Find first gap using binary search approach for better performance
-    let expectedPort = startPort
-    for (const usedPort of usedPorts) {
-      if (usedPort !== expectedPort) {
-        return expectedPort
-      }
-      expectedPort++
-    }
-
-    // No gap found, return next port after last used
-    const nextPort = expectedPort
+    const nextPort = highestPortResult.port + 1
 
     if (nextPort > endPort) {
       throw new Error(`No available port found in range ${startPort}-${endPort}`)
