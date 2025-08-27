@@ -1,8 +1,8 @@
 import { inject } from '@adonisjs/core'
 import { Logger } from '@adonisjs/core/logger'
 import DatabaseConnectionBuilderService from '#services/database_connection_builder/database_connection_builder_service'
-import DatabaseConnectionService from '#services/database_orchestration/helpers/database_connection_service'
 import DockerSwarmManagerService from '#services/docker_swarm_manager_service'
+import PortAllocationService from '#services/infrastructure/port_allocation/port_allocation_service'
 import WorkerTypes from '#enums/worker_types'
 import DeploymentTypes from '#enums/deployment_types'
 import DockerSwarmWorker from '#models/docker_swarm_worker'
@@ -17,8 +17,8 @@ export default class InfrastructureSetupService {
   constructor(
     private logger: Logger,
     private databaseConnectionBuilder: DatabaseConnectionBuilderService,
-    private databaseConnectionService: DatabaseConnectionService,
-    private dockerSwarmManagerService: DockerSwarmManagerService
+    private dockerSwarmManagerService: DockerSwarmManagerService,
+    private portAllocationService: PortAllocationService
   ) {}
 
   async setupInfrastructure(
@@ -51,11 +51,12 @@ export default class InfrastructureSetupService {
     )
 
     this.logger.info('Allocating and reserving port...')
-    const port = await this.databaseConnectionService.allocateAndReservePort(
+    const port = await this.portAllocationService.allocateAndReservePort(
       databaseInstance.id,
       databaseInstance.regionCode,
       databaseInstance.tlsMode,
-      workerNode.dockerSwarmManager
+      workerNode.dockerSwarmManager,
+      [workerNode.name]
     )
 
     const hostnames = await this.generateHostnamesForWorkers(
@@ -109,11 +110,12 @@ export default class InfrastructureSetupService {
     selectedWorkers.sort((a, b) => a.workerNumber - b.workerNumber)
     const primaryWorkerNode = selectedWorkers[0]
 
-    const port = await this.databaseConnectionService.allocateAndReservePort(
+    const port = await this.portAllocationService.allocateAndReservePort(
       databaseInstance.id,
       databaseInstance.regionCode,
       databaseInstance.tlsMode,
-      primaryWorkerNode.dockerSwarmManager
+      primaryWorkerNode.dockerSwarmManager,
+      selectedWorkers.map((worker) => worker.name)
     )
 
     const hostnames = await this.generateHostnamesForWorkers(
