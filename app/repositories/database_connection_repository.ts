@@ -1,7 +1,7 @@
-import DefaultPortRange from '#enums/default_port_range'
-import RegionCodes from '#enums/region_codes'
 import DatabaseConnection from '#models/database_connection'
 import { TransactionClientContract } from '@adonisjs/lucid/types/database'
+import RegionCodes from '#enums/region_codes'
+import DefaultPortRange from '#enums/default_port_range'
 
 export default class DatabaseConnectionRepository {
   /**
@@ -93,45 +93,39 @@ export default class DatabaseConnectionRepository {
     return newConnection
   }
 
-  public async findNextAvailablePort(regionCode: RegionCodes): Promise<number> {
+  /**
+   * Get the highest used port in a region
+   */
+  public async getHighestUsedPort(regionCode: RegionCodes): Promise<number | null> {
     const startPort = DefaultPortRange.Start
     const endPort = DefaultPortRange.End
 
-    // Get all used ports in a single query, sorted - join with region to filter by region code
-    const connections = await DatabaseConnection.query()
+    const result = await DatabaseConnection.query()
+      .select('port')
+      .where('region_code', regionCode)
+      .whereNotNull('port')
+      .whereBetween('port', [startPort, endPort])
+      .orderBy('port', 'desc')
+      .limit(1)
+      .first()
+
+    return result?.port || null
+  }
+
+  /**
+   * Get all used ports in a region
+   */
+  public async getUsedPorts(regionCode: RegionCodes): Promise<number[]> {
+    const startPort = DefaultPortRange.Start
+    const endPort = DefaultPortRange.End
+
+    const results = await DatabaseConnection.query()
       .select('port')
       .where('region_code', regionCode)
       .whereNotNull('port')
       .whereBetween('port', [startPort, endPort])
       .orderBy('port', 'asc')
-      .exec()
 
-    // Extract port numbers from the result
-    const usedPorts = connections
-      .map((conn) => conn.port)
-      .filter((port): port is number => port !== null)
-
-    // If no ports used, return start port
-    if (usedPorts.length === 0) {
-      return startPort
-    }
-
-    // Find first gap using binary search approach for better performance
-    let expectedPort = startPort
-    for (const usedPort of usedPorts) {
-      if (usedPort !== expectedPort) {
-        return expectedPort
-      }
-      expectedPort++
-    }
-
-    // No gap found, return next port after last used
-    const nextPort = expectedPort
-
-    if (nextPort > endPort) {
-      throw new Error(`No available port found in range ${startPort}-${endPort}`)
-    }
-
-    return nextPort
+    return results.map((r) => r.port).filter((port): port is number => port !== null)
   }
 }
