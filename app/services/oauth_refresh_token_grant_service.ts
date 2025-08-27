@@ -2,7 +2,6 @@ import { inject } from '@adonisjs/core'
 import { DateTime } from 'luxon'
 import logger from '@adonisjs/core/services/logger'
 import OAuthRefreshTokenRepository from '#repositories/oauth_refresh_token_repository'
-import CodeGeneratorService from '#services/code_generator_service'
 import OAuthTokenStorageService from '#services/oauth_token_storage_service'
 import InvalidOAuthRequestException from '#exceptions/invalid_oauth_request_exception'
 import { OAuthTokenParams } from '#validators/oauth_token'
@@ -13,7 +12,6 @@ import OAuthClient from '#models/oauth_client'
 export default class OAuthRefreshTokenGrantService {
   constructor(
     private refreshTokenRepository: OAuthRefreshTokenRepository,
-    private codeGenerator: CodeGeneratorService,
     private tokenStorage: OAuthTokenStorageService
   ) {}
 
@@ -36,7 +34,7 @@ export default class OAuthRefreshTokenGrantService {
     }
 
     // Verify client matches
-    if (refreshTokenRecord.clientId !== client.clientId) {
+    if (refreshTokenRecord.clientId !== client.id) {
       throw new InvalidOAuthRequestException('invalid_grant', 'Refresh token client mismatch')
     }
 
@@ -58,18 +56,14 @@ export default class OAuthRefreshTokenGrantService {
       scopes = requestedScopes.filter((scope) => scopes.includes(scope))
     }
 
-    // Generate new access token
-    const newAccessToken = this.codeGenerator.generateAccessToken()
-
     // Revoke old access token if it exists
-    if (refreshTokenRecord.accessTokenHash) {
-      await this.tokenStorage.revokeAccessToken(refreshTokenRecord.accessTokenHash)
+    if (refreshTokenRecord.accessTokenId) {
+      await this.tokenStorage.revokeAccessToken(refreshTokenRecord.accessTokenId)
     }
 
     // Store new access token
     const accessTokenRecord = await this.tokenStorage.storeAccessToken({
-      accessToken: newAccessToken,
-      clientId: client.clientId,
+      clientId: client.id,
       userId: refreshTokenRecord.userId,
       organizationId: refreshTokenRecord.organizationId,
       scopes: scopes,
@@ -77,17 +71,12 @@ export default class OAuthRefreshTokenGrantService {
     })
 
     // Update refresh token to point to new access token
-    await this.tokenStorage.updateRefreshTokenAccessToken(
-      refreshTokenRecord,
-      accessTokenRecord.tokenHash
-    )
+    await this.tokenStorage.updateRefreshTokenAccessToken(refreshTokenRecord, accessTokenRecord.id)
 
-    logger.info(
-      `Access token refreshed for user ${refreshTokenRecord.userId}, client ${client.clientId}`
-    )
+    logger.info(`Access token refreshed for user ${refreshTokenRecord.userId}, client ${client.id}`)
 
     return {
-      access_token: newAccessToken,
+      access_token: accessTokenRecord.id,
       token_type: 'Bearer',
       expires_in: client.accessTokenLifetime,
       scope: scopes.join(' '),

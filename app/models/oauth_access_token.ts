@@ -10,7 +10,7 @@ export default class OAuthAccessToken extends BaseModel {
   static table = 'oauth_access_tokens'
 
   @column({ isPrimary: true })
-  declare tokenHash: string
+  declare id: string
 
   @column()
   declare clientId: string
@@ -46,6 +46,6 @@ export default class OAuthAccessToken extends BaseModel {
   @belongsTo(() => Organization, { foreignKey: 'organizationId' })
   declare organization: BelongsTo<typeof Organization>
 
-  @hasOne(() => OAuthRefreshToken, { foreignKey: 'accessTokenHash', localKey: 'tokenHash' })
+  @hasOne(() => OAuthRefreshToken, { foreignKey: 'accessTokenId' })
   declare refreshToken: HasOne<typeof OAuthRefreshToken>
 }

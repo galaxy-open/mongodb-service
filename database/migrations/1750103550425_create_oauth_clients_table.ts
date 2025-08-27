@@ -5,7 +5,11 @@ export default class extends BaseSchema {
 
   async up() {
     this.schema.createTable(this.tableName, (table) => {
-      table.string('client_id').primary()
+      table
+        .uuid('id')
+        .primary()
+        .defaultTo(this.db.rawQuery('gen_random_uuid()').knexQuery)
+        .notNullable()
       table.string('client_secret_hash', 1000).notNullable()
       table.string('client_name').notNullable()
       table.specificType('redirect_uris', 'text[]').notNullable()

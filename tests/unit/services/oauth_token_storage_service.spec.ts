@@ -39,8 +39,6 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
 
   test('storeTokens :: should store both access and refresh tokens', async ({ assert }) => {
     const tokenData: TokenStorageData = {
-      accessToken: 'generated-access-token',
-      refreshToken: 'generated-refresh-token',
       clientId: 'test-client',
       userId: 'user-123',
       scopes: ['database:read', 'database:write'],
@@ -49,8 +47,7 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
     }
 
     const mockAccessToken = {
-      tokenHash: 'access-token-hash',
-      token: 'generated-access-token',
+      id: 'access-token-uuid',
       clientId: 'test-client',
       userId: 'user-123',
       scopes: ['database:read', 'database:write'],
@@ -59,11 +56,10 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
     } as unknown as OAuthAccessToken
 
     const mockRefreshToken = {
-      tokenHash: 'refresh-token-hash',
-      token: 'generated-refresh-token',
+      id: 'refresh-token-uuid',
       clientId: 'test-client',
       userId: 'user-123',
-      accessTokenHash: 'access-token-hash',
+      accessTokenId: 'access-token-uuid',
       scopes: ['database:read', 'database:write'],
       isRevoked: false,
       expiresAt: mockDateTime.plus({ seconds: 86400 }),
@@ -79,7 +75,6 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
     // Verify access token creation
     assert.isTrue(accessTokenRepoStub.create.calledOnce)
     const accessTokenArgs = accessTokenRepoStub.create.firstCall.args[0]
-    assert.equal(accessTokenArgs.token, 'generated-access-token')
     assert.equal(accessTokenArgs.clientId, 'test-client')
     assert.equal(accessTokenArgs.userId, 'user-123')
     assert.deepEqual(accessTokenArgs.scopes, ['database:read', 'database:write'])
@@ -89,10 +84,9 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
     // Verify refresh token creation
     assert.isTrue(refreshTokenRepoStub.create.calledOnce)
     const refreshTokenArgs = refreshTokenRepoStub.create.firstCall.args[0]
-    assert.equal(refreshTokenArgs.token, 'generated-refresh-token')
     assert.equal(refreshTokenArgs.clientId, 'test-client')
     assert.equal(refreshTokenArgs.userId, 'user-123')
-    assert.equal(refreshTokenArgs.accessTokenHash, 'access-token-hash')
+    assert.equal(refreshTokenArgs.accessTokenId, 'access-token-uuid')
     assert.deepEqual(refreshTokenArgs.scopes, ['database:read', 'database:write'])
     assert.isFalse(refreshTokenArgs.isRevoked)
     assert.isTrue(refreshTokenArgs.expiresAt!.equals(mockDateTime.plus({ seconds: 86400 })))
@@ -104,8 +98,6 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
 
   test('storeTokens :: should handle empty scopes', async ({ assert }) => {
     const tokenData: TokenStorageData = {
-      accessToken: 'access-token',
-      refreshToken: 'refresh-token',
       clientId: 'test-client',
       userId: 'user-123',
       scopes: [], // Empty scopes
@@ -114,12 +106,12 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
     }
 
     const mockAccessToken = {
-      tokenHash: 'access-token-hash',
+      id: 'access-token-uuid',
       scopes: [],
     } as unknown as OAuthAccessToken
 
     const mockRefreshToken = {
-      tokenHash: 'refresh-token-hash',
+      id: 'refresh-token-uuid',
       scopes: [],
     } as unknown as OAuthRefreshToken
 
@@ -140,8 +132,6 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
 
   test('storeTokens :: should handle different token lifetimes', async ({ assert }) => {
     const tokenData: TokenStorageData = {
-      accessToken: 'short-lived-token',
-      refreshToken: 'long-lived-token',
       clientId: 'test-client',
       userId: 'user-123',
       scopes: ['database:read'],
@@ -149,8 +139,8 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
       refreshTokenLifetime: 604800, // 7 days
     }
 
-    const mockAccessToken = { tokenHash: 'hash1' } as unknown as OAuthAccessToken
-    const mockRefreshToken = { tokenHash: 'hash2' } as unknown as OAuthRefreshToken
+    const mockAccessToken = { id: 'access-uuid-1' } as unknown as OAuthAccessToken
+    const mockRefreshToken = { id: 'refresh-uuid-1' } as unknown as OAuthRefreshToken
 
     accessTokenRepoStub.create.resolves(mockAccessToken)
     refreshTokenRepoStub.create.resolves(mockRefreshToken)
@@ -167,7 +157,6 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
 
   test('storeAccessToken :: should store a single access token', async ({ assert }) => {
     const tokenData = {
-      accessToken: 'new-access-token',
       clientId: 'test-client',
       userId: 'user-123',
       scopes: ['database:read', 'database:admin'],
@@ -175,8 +164,7 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
     }
 
     const mockAccessToken = {
-      tokenHash: 'new-access-token-hash',
-      token: 'new-access-token',
+      id: 'new-access-token-uuid',
       clientId: 'test-client',
       userId: 'user-123',
       scopes: ['database:read', 'database:admin'],
@@ -191,7 +179,6 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
     // Verify access token creation
     assert.isTrue(accessTokenRepoStub.create.calledOnce)
     const accessTokenArgs = accessTokenRepoStub.create.firstCall.args[0]
-    assert.equal(accessTokenArgs.token, 'new-access-token')
     assert.equal(accessTokenArgs.clientId, 'test-client')
     assert.equal(accessTokenArgs.userId, 'user-123')
     assert.deepEqual(accessTokenArgs.scopes, ['database:read', 'database:admin'])
@@ -207,7 +194,6 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
 
   test('storeAccessToken :: should handle minimal scopes', async ({ assert }) => {
     const tokenData = {
-      accessToken: 'minimal-token',
       clientId: 'minimal-client',
       userId: 'user-456',
       scopes: ['basic'],
@@ -215,7 +201,7 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
     }
 
     const mockAccessToken = {
-      tokenHash: 'minimal-hash',
+      id: 'minimal-uuid',
       scopes: ['basic'],
     } as unknown as OAuthAccessToken
 
@@ -228,34 +214,34 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
     assert.equal(result, mockAccessToken)
   })
 
-  test('revokeAccessToken :: should revoke access token by hash', async ({ assert }) => {
-    const tokenHash = 'access-token-hash-to-revoke'
+  test('revokeAccessToken :: should revoke access token by id', async ({ assert }) => {
+    const tokenId = 'access-token-id-to-revoke'
 
     accessTokenRepoStub.revoke.resolves()
 
-    await service.revokeAccessToken(tokenHash)
+    await service.revokeAccessToken(tokenId)
 
-    // Verify revocation was called with correct hash
-    assert.isTrue(accessTokenRepoStub.revoke.calledOnceWith(tokenHash))
+    // Verify revocation was called with correct id
+    assert.isTrue(accessTokenRepoStub.revoke.calledOnceWith(tokenId))
 
     // Verify refresh token repository was NOT called
     assert.isFalse(refreshTokenRepoStub.create.called)
   })
 
-  test('updateRefreshTokenAccessToken :: should update refresh token with new access token hash', async ({
+  test('updateRefreshTokenAccessToken :: should update refresh token with new access token id', async ({
     assert,
   }) => {
     const mockRefreshToken = {
-      accessTokenHash: 'old-access-token-hash',
+      accessTokenId: 'old-access-token-id',
       save: sinon.spy(),
     } as unknown as OAuthRefreshToken
 
-    const newAccessTokenHash = 'new-access-token-hash'
+    const newAccessTokenId = 'new-access-token-id'
 
-    await service.updateRefreshTokenAccessToken(mockRefreshToken, newAccessTokenHash)
+    await service.updateRefreshTokenAccessToken(mockRefreshToken, newAccessTokenId)
 
     // Verify refresh token was updated
-    assert.equal(mockRefreshToken.accessTokenHash, newAccessTokenHash)
+    assert.equal(mockRefreshToken.accessTokenId, newAccessTokenId)
 
     // Verify save was called
     const saveSpy = mockRefreshToken.save as sinon.SinonSpy
@@ -268,8 +254,6 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
 
   test('storeTokens :: should handle repository errors gracefully', async ({ assert }) => {
     const tokenData: TokenStorageData = {
-      accessToken: 'error-token',
-      refreshToken: 'error-refresh',
       clientId: 'error-client',
       userId: 'error-user',
       scopes: ['error:scope'],
@@ -297,8 +281,6 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
 
   test('storeTokens :: should handle refresh token creation failure', async ({ assert }) => {
     const tokenData: TokenStorageData = {
-      accessToken: 'success-token',
-      refreshToken: 'fail-refresh',
       clientId: 'test-client',
       userId: 'test-user',
       scopes: ['test:scope'],
@@ -307,7 +289,7 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
     }
 
     const mockAccessToken = {
-      tokenHash: 'success-hash',
+      id: 'success-uuid',
     } as unknown as OAuthAccessToken
 
     // Access token succeeds, refresh token fails
@@ -328,38 +310,38 @@ test.group('OAuthTokenStorageService | Unit', (group) => {
   })
 
   test('revokeAccessToken :: should handle revocation errors', async ({ assert }) => {
-    const tokenHash = 'problematic-hash'
+    const tokenId = 'problematic-id'
     const revocationError = new Error('Token not found')
 
     accessTokenRepoStub.revoke.rejects(revocationError)
 
     try {
-      await service.revokeAccessToken(tokenHash)
+      await service.revokeAccessToken(tokenId)
       assert.fail('Expected error to be thrown')
     } catch (error) {
       assert.equal(error.message, 'Token not found')
     }
 
-    assert.isTrue(accessTokenRepoStub.revoke.calledOnceWith(tokenHash))
+    assert.isTrue(accessTokenRepoStub.revoke.calledOnceWith(tokenId))
   })
 
   test('updateRefreshTokenAccessToken :: should handle save errors', async ({ assert }) => {
     const mockRefreshToken = {
-      accessTokenHash: 'old-hash',
+      accessTokenId: 'old-id',
       save: sinon.stub().rejects(new Error('Save failed')),
     } as unknown as OAuthRefreshToken
 
-    const newAccessTokenHash = 'new-hash'
+    const newAccessTokenId = 'new-id'
 
     try {
-      await service.updateRefreshTokenAccessToken(mockRefreshToken, newAccessTokenHash)
+      await service.updateRefreshTokenAccessToken(mockRefreshToken, newAccessTokenId)
       assert.fail('Expected error to be thrown')
     } catch (error) {
       assert.equal(error.message, 'Save failed')
     }
 
-    // Verify the hash was still updated before save failed
-    assert.equal(mockRefreshToken.accessTokenHash, newAccessTokenHash)
+    // Verify the id was still updated before save failed
+    assert.equal(mockRefreshToken.accessTokenId, newAccessTokenId)
 
     // Verify save was attempted
     const saveStub = mockRefreshToken.save as sinon.SinonStub

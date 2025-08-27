@@ -14,7 +14,7 @@ export interface PublicKeyData {
 
 export default class JwkKey extends BaseModel {
   @column({ isPrimary: true })
-  declare kid: string
+  declare id: string
 
   @column()
   declare keyType: string

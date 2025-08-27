@@ -11,7 +11,7 @@ export default class OAuthClient extends BaseModel {
   static table = 'oauth_clients'
 
   @column({ isPrimary: true })
-  declare clientId: string
+  declare id: string
 
   @column()
   declare clientSecretHash: string

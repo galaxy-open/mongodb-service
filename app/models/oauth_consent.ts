@@ -41,6 +41,6 @@ export default class OauthConsent extends BaseModel {
   @belongsTo(() => User, { foreignKey: 'userId' })
   declare user: BelongsTo<typeof User>
 
-  @belongsTo(() => OauthClient, { foreignKey: 'clientId', localKey: 'clientId' })
+  @belongsTo(() => OauthClient, { foreignKey: 'clientId' })
   declare client: BelongsTo<typeof OauthClient>
 }

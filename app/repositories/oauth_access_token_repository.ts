@@ -1,5 +1,4 @@
 import OAuthAccessToken from '#models/oauth_access_token'
-import hash from '@adonisjs/core/services/hash'
 import { DateTime } from 'luxon'
 
 export default class OAuthAccessTokenRepository {
@@ -12,32 +11,24 @@ export default class OAuthAccessTokenRepository {
   }
 
   /**
-   * Retrieves an OAuthAccessToken instance by its token hash.
+   * Retrieves an OAuthAccessToken instance by its ID (UUID token).
    */
-  public async findByTokenHash(tokenHash: string): Promise<OAuthAccessToken | null> {
-    return OAuthAccessToken.find(tokenHash)
+  public async findByToken(token: string): Promise<OAuthAccessToken | null> {
+    return OAuthAccessToken.find(token)
   }
 
   /**
-   * Creates a new OAuthAccessToken instance with a hashed token.
+   * Creates a new OAuthAccessToken instance (UUID generated automatically).
    */
-  public async create(
-    data: Partial<OAuthAccessToken> & { token: string }
-  ): Promise<OAuthAccessToken> {
-    const { token, ...tokenData } = data
-    const tokenHash = await hash.make(token)
-
-    return OAuthAccessToken.create({
-      ...tokenData,
-      tokenHash,
-    })
+  public async create(data: Partial<OAuthAccessToken>): Promise<OAuthAccessToken> {
+    return OAuthAccessToken.create(data)
   }
 
   /**
    * Finds and validates an access token.
    */
   public async findAndValidate(token: string): Promise<OAuthAccessToken | null> {
-    return this.findByToken(token)
+    return this.findByTokenWithRelations(token)
   }
 
   /**
@@ -57,8 +48,8 @@ export default class OAuthAccessTokenRepository {
   /**
    * Revokes an access token.
    */
-  public async revoke(tokenHash: string): Promise<OAuthAccessToken | null> {
-    const token = await this.findByTokenHash(tokenHash)
+  public async revoke(tokenId: string): Promise<OAuthAccessToken | null> {
+    const token = await this.findByToken(tokenId)
     if (!token) {
       return null
     }
@@ -97,62 +88,26 @@ export default class OAuthAccessTokenRepository {
   }
 
   /**
-   * Deletes an OAuthAccessToken instance by its token hash.
+   * Deletes an OAuthAccessToken instance by its token ID.
    */
-  public async delete(tokenHash: string): Promise<void> {
-    const modelInstance = await this.findByTokenHash(tokenHash)
+  public async delete(tokenId: string): Promise<void> {
+    const modelInstance = await this.findByToken(tokenId)
     if (modelInstance) {
       await modelInstance.delete()
     }
   }
 
   /**
-   * Finds an access token by the actual token value (validates hash).
+   * Finds an access token by UUID with all relations preloaded.
    */
-  public async findByToken(token: string): Promise<OAuthAccessToken | null> {
-    // Try to hash the token and find matching record
-    try {
-      const potentialMatches = await OAuthAccessToken.query()
-        .where('is_revoked', false)
-        .where('expires_at', '>', DateTime.now().toSQL())
-        .preload('user')
-        .preload('client')
-
-      for (const tokenRecord of potentialMatches) {
-        const isValid = await hash.verify(tokenRecord.tokenHash, token)
-        if (isValid) {
-          return tokenRecord
-        }
-      }
-      return null
-    } catch {
-      return null
-    }
-  }
-
-  /**
-   * Finds an access token by the actual token value with organization preloaded.
-   */
-  // @TODO - Improve this, instead of using hash, use JWT tokens.
   public async findByTokenWithRelations(token: string): Promise<OAuthAccessToken | null> {
-    // Try to hash the token and find matching record
-    try {
-      const potentialMatches = await OAuthAccessToken.query()
-        .where('is_revoked', false)
-        .where('expires_at', '>', DateTime.now().toSQL())
-        .preload('user')
-        .preload('client')
-        .preload('organization')
-
-      for (const tokenRecord of potentialMatches) {
-        const isValid = await hash.verify(tokenRecord.tokenHash, token)
-        if (isValid) {
-          return tokenRecord
-        }
-      }
-      return null
-    } catch {
-      return null
-    }
+    return OAuthAccessToken.query()
+      .where('id', token)
+      .where('is_revoked', false)
+      .where('expires_at', '>', DateTime.now().toSQL())
+      .preload('user')
+      .preload('client')
+      .preload('organization')
+      .first()
   }
 }

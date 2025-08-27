@@ -3,7 +3,6 @@ import sinon from 'sinon'
 import { DateTime } from 'luxon'
 import app from '@adonisjs/core/services/app'
 import OAuthRefreshTokenGrantService from '#services/oauth_refresh_token_grant_service'
-import CodeGeneratorService from '#services/code_generator_service'
 import OAuthTokenStorageService from '#services/oauth_token_storage_service'
 import OAuthRefreshTokenRepository from '#repositories/oauth_refresh_token_repository'
 import InvalidOAuthRequestException from '#exceptions/invalid_oauth_request_exception'
@@ -15,28 +14,20 @@ import OAuthAccessToken from '#models/oauth_access_token'
 test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
   let service: OAuthRefreshTokenGrantService
   let refreshTokenRepoStub: sinon.SinonStubbedInstance<OAuthRefreshTokenRepository>
-  let codeGeneratorStub: sinon.SinonStubbedInstance<CodeGeneratorService>
   let tokenStorageStub: sinon.SinonStubbedInstance<OAuthTokenStorageService>
 
   group.each.setup(() => {
     refreshTokenRepoStub = sinon.createStubInstance(OAuthRefreshTokenRepository)
-    codeGeneratorStub = sinon.createStubInstance(CodeGeneratorService)
     tokenStorageStub = sinon.createStubInstance(OAuthTokenStorageService)
 
     app.container.swap(OAuthRefreshTokenRepository, () => refreshTokenRepoStub as any)
-    app.container.swap(CodeGeneratorService, () => codeGeneratorStub as any)
     app.container.swap(OAuthTokenStorageService, () => tokenStorageStub as any)
 
-    service = new OAuthRefreshTokenGrantService(
-      refreshTokenRepoStub,
-      codeGeneratorStub,
-      tokenStorageStub
-    )
+    service = new OAuthRefreshTokenGrantService(refreshTokenRepoStub, tokenStorageStub)
   })
 
   group.each.teardown(() => {
     app.container.restore(OAuthRefreshTokenRepository)
-    app.container.restore(CodeGeneratorService)
     app.container.restore(OAuthTokenStorageService)
     sinon.restore()
   })
@@ -51,26 +42,25 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
     }
 
     const client = {
-      clientId: 'test-client',
+      id: 'test-client-uuid',
       accessTokenLifetime: 3600,
     } as OAuthClient
 
     const refreshTokenRecord = {
-      clientId: 'test-client',
+      clientId: 'test-client-uuid',
       userId: 'user-123',
       isRevoked: false,
       expiresAt: DateTime.now().plus({ days: 30 }),
       scopes: ['database:read', 'database:write'],
-      accessTokenHash: 'old-access-token-hash',
+      accessTokenId: 'old-access-token-id',
     } as unknown as OAuthRefreshToken
 
     const newAccessTokenRecord = {
-      tokenHash: 'new-access-token-hash',
+      id: 'new-access-token-id',
     } as unknown as OAuthAccessToken
 
     // Setup stubs
     refreshTokenRepoStub.findByToken.resolves(refreshTokenRecord)
-    codeGeneratorStub.generateAccessToken.returns('new-access-token')
     tokenStorageStub.revokeAccessToken.resolves()
     tokenStorageStub.storeAccessToken.resolves(newAccessTokenRecord)
     tokenStorageStub.updateRefreshTokenAccessToken.resolves()
@@ -79,7 +69,7 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
     const result = await service.handle(params, client)
 
     // Verify response
-    assert.equal(result.access_token, 'new-access-token')
+    assert.equal(result.access_token, 'new-access-token-id')
     assert.equal(result.token_type, 'Bearer')
     assert.equal(result.expires_in, 3600)
     assert.equal(result.scope, 'database:read database:write')
@@ -87,20 +77,18 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
 
     // Verify method calls
     assert.isTrue(refreshTokenRepoStub.findByToken.calledOnceWith('valid-refresh-token'))
-    assert.isTrue(codeGeneratorStub.generateAccessToken.calledOnce)
-    assert.isTrue(tokenStorageStub.revokeAccessToken.calledOnceWith('old-access-token-hash'))
+    assert.isTrue(tokenStorageStub.revokeAccessToken.calledOnceWith('old-access-token-id'))
     assert.isTrue(tokenStorageStub.storeAccessToken.calledOnce)
     assert.isTrue(
       tokenStorageStub.updateRefreshTokenAccessToken.calledOnceWith(
         refreshTokenRecord,
-        'new-access-token-hash'
+        'new-access-token-id'
       )
     )
 
     // Verify access token storage data
     const storeAccessTokenArgs = tokenStorageStub.storeAccessToken.firstCall.args[0]
-    assert.equal(storeAccessTokenArgs.accessToken, 'new-access-token')
-    assert.equal(storeAccessTokenArgs.clientId, 'test-client')
+    assert.equal(storeAccessTokenArgs.clientId, 'test-client-uuid')
     assert.equal(storeAccessTokenArgs.userId, 'user-123')
     assert.deepEqual(storeAccessTokenArgs.scopes, ['database:read', 'database:write'])
     assert.equal(storeAccessTokenArgs.accessTokenLifetime, 3600)
@@ -116,7 +104,7 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
       // refresh_token is missing
     }
 
-    const client = { clientId: 'test-client' } as OAuthClient
+    const client = { id: 'test-client-uuid' } as OAuthClient
 
     try {
       await service.handle(params, client)
@@ -137,7 +125,7 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
       refresh_token: 'invalid-refresh-token',
     }
 
-    const client = { clientId: 'test-client' } as OAuthClient
+    const client = { id: 'test-client-uuid' } as OAuthClient
 
     // Setup stub to return null (token not found)
     refreshTokenRepoStub.findByToken.resolves(null)
@@ -161,10 +149,10 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
       refresh_token: 'valid-refresh-token',
     }
 
-    const client = { clientId: 'test-client' } as OAuthClient
+    const client = { id: 'test-client-uuid' } as OAuthClient
 
     const refreshTokenRecord = {
-      clientId: 'different-client', // Different client
+      clientId: 'different-client-uuid', // Different client
       userId: 'user-123',
       isRevoked: false,
       expiresAt: DateTime.now().plus({ days: 30 }),
@@ -192,10 +180,10 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
       refresh_token: 'revoked-refresh-token',
     }
 
-    const client = { clientId: 'test-client' } as OAuthClient
+    const client = { id: 'test-client-uuid' } as OAuthClient
 
     const revokedRefreshToken = {
-      clientId: 'test-client',
+      clientId: 'test-client-uuid',
       userId: 'user-123',
       isRevoked: true, // Revoked
       expiresAt: DateTime.now().plus({ days: 30 }),
@@ -223,10 +211,10 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
       refresh_token: 'expired-refresh-token',
     }
 
-    const client = { clientId: 'test-client' } as OAuthClient
+    const client = { id: 'test-client-uuid' } as OAuthClient
 
     const expiredRefreshToken = {
-      clientId: 'test-client',
+      clientId: 'test-client-uuid',
       userId: 'user-123',
       isRevoked: false,
       expiresAt: DateTime.now().minus({ days: 1 }), // Expired 1 day ago
@@ -256,25 +244,24 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
     }
 
     const client = {
-      clientId: 'test-client',
+      id: 'test-client-uuid',
       accessTokenLifetime: 3600,
     } as OAuthClient
 
     const refreshTokenRecord = {
-      clientId: 'test-client',
+      clientId: 'test-client-uuid',
       userId: 'user-123',
       isRevoked: false,
       expiresAt: DateTime.now().plus({ days: 30 }),
       scopes: ['database:read', 'database:write'], // Original scopes
-      accessTokenHash: 'old-access-token-hash',
+      accessTokenId: 'old-access-token-id',
     } as unknown as OAuthRefreshToken
 
     const newAccessTokenRecord = {
-      tokenHash: 'new-access-token-hash',
+      id: 'new-access-token-id',
     } as unknown as OAuthAccessToken
 
     refreshTokenRepoStub.findByToken.resolves(refreshTokenRecord)
-    codeGeneratorStub.generateAccessToken.returns('new-access-token')
     tokenStorageStub.revokeAccessToken.resolves()
     tokenStorageStub.storeAccessToken.resolves(newAccessTokenRecord)
     tokenStorageStub.updateRefreshTokenAccessToken.resolves()
@@ -299,25 +286,24 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
     }
 
     const client = {
-      clientId: 'test-client',
+      id: 'test-client-uuid',
       accessTokenLifetime: 3600,
     } as OAuthClient
 
     const refreshTokenRecord = {
-      clientId: 'test-client',
+      clientId: 'test-client-uuid',
       userId: 'user-123',
       isRevoked: false,
       expiresAt: DateTime.now().plus({ days: 30 }),
       scopes: ['database:read'], // Only has read scope
-      accessTokenHash: 'old-access-token-hash',
+      accessTokenId: 'old-access-token-id',
     } as unknown as OAuthRefreshToken
 
     const newAccessTokenRecord = {
-      tokenHash: 'new-access-token-hash',
+      id: 'new-access-token-id',
     } as unknown as OAuthAccessToken
 
     refreshTokenRepoStub.findByToken.resolves(refreshTokenRecord)
-    codeGeneratorStub.generateAccessToken.returns('new-access-token')
     tokenStorageStub.revokeAccessToken.resolves()
     tokenStorageStub.storeAccessToken.resolves(newAccessTokenRecord)
     tokenStorageStub.updateRefreshTokenAccessToken.resolves()
@@ -341,31 +327,30 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
     }
 
     const client = {
-      clientId: 'test-client',
+      id: 'test-client-uuid',
       accessTokenLifetime: 3600,
     } as OAuthClient
 
     const refreshTokenRecord = {
-      clientId: 'test-client',
+      clientId: 'test-client-uuid',
       userId: 'user-123',
       isRevoked: false,
       expiresAt: DateTime.now().plus({ days: 30 }),
       scopes: ['database:read'],
-      accessTokenHash: null, // No old access token
+      accessTokenId: null, // No old access token
     } as unknown as OAuthRefreshToken
 
     const newAccessTokenRecord = {
-      tokenHash: 'new-access-token-hash',
+      id: 'new-access-token-id',
     } as unknown as OAuthAccessToken
 
     refreshTokenRepoStub.findByToken.resolves(refreshTokenRecord)
-    codeGeneratorStub.generateAccessToken.returns('new-access-token')
     tokenStorageStub.storeAccessToken.resolves(newAccessTokenRecord)
     tokenStorageStub.updateRefreshTokenAccessToken.resolves()
 
     const result = await service.handle(params, client)
 
-    assert.equal(result.access_token, 'new-access-token')
+    assert.equal(result.access_token, 'new-access-token-id')
 
     // Should NOT try to revoke old access token since there isn't one
     assert.isFalse(tokenStorageStub.revokeAccessToken.called)
@@ -384,25 +369,24 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
     }
 
     const client = {
-      clientId: 'test-client',
+      id: 'test-client-uuid',
       accessTokenLifetime: 3600,
     } as OAuthClient
 
     const refreshTokenRecord = {
-      clientId: 'test-client',
+      clientId: 'test-client-uuid',
       userId: 'user-123',
       isRevoked: false,
       expiresAt: DateTime.now().plus({ days: 30 }),
       scopes: [], // Empty scopes
-      accessTokenHash: 'old-access-token-hash',
+      accessTokenId: 'old-access-token-id',
     } as unknown as OAuthRefreshToken
 
     const newAccessTokenRecord = {
-      tokenHash: 'new-access-token-hash',
+      id: 'new-access-token-id',
     } as unknown as OAuthAccessToken
 
     refreshTokenRepoStub.findByToken.resolves(refreshTokenRecord)
-    codeGeneratorStub.generateAccessToken.returns('new-access-token')
     tokenStorageStub.revokeAccessToken.resolves()
     tokenStorageStub.storeAccessToken.resolves(newAccessTokenRecord)
     tokenStorageStub.updateRefreshTokenAccessToken.resolves()
@@ -425,25 +409,24 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
     }
 
     const client = {
-      clientId: 'test-client',
+      id: 'test-client-uuid',
       accessTokenLifetime: 3600,
     } as OAuthClient
 
     const refreshTokenRecord = {
-      clientId: 'test-client',
+      clientId: 'test-client-uuid',
       userId: 'user-123',
       isRevoked: false,
       expiresAt: DateTime.now().plus({ days: 30 }),
       scopes: null, // Null scopes
-      accessTokenHash: 'old-access-token-hash',
+      accessTokenId: 'old-access-token-id',
     } as unknown as OAuthRefreshToken
 
     const newAccessTokenRecord = {
-      tokenHash: 'new-access-token-hash',
+      id: 'new-access-token-id',
     } as unknown as OAuthAccessToken
 
     refreshTokenRepoStub.findByToken.resolves(refreshTokenRecord)
-    codeGeneratorStub.generateAccessToken.returns('new-access-token')
     tokenStorageStub.revokeAccessToken.resolves()
     tokenStorageStub.storeAccessToken.resolves(newAccessTokenRecord)
     tokenStorageStub.updateRefreshTokenAccessToken.resolves()
@@ -466,25 +449,24 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
     }
 
     const client = {
-      clientId: 'test-client',
+      id: 'test-client-uuid',
       accessTokenLifetime: 3600,
     } as OAuthClient
 
     const refreshTokenRecord = {
-      clientId: 'test-client',
+      clientId: 'test-client-uuid',
       userId: 'user-123',
       isRevoked: false,
       expiresAt: null, // No expiration
       scopes: ['database:read'],
-      accessTokenHash: 'old-access-token-hash',
+      accessTokenId: 'old-access-token-id',
     } as unknown as OAuthRefreshToken
 
     const newAccessTokenRecord = {
-      tokenHash: 'new-access-token-hash',
+      id: 'new-access-token-id',
     } as unknown as OAuthAccessToken
 
     refreshTokenRepoStub.findByToken.resolves(refreshTokenRecord)
-    codeGeneratorStub.generateAccessToken.returns('new-access-token')
     tokenStorageStub.revokeAccessToken.resolves()
     tokenStorageStub.storeAccessToken.resolves(newAccessTokenRecord)
     tokenStorageStub.updateRefreshTokenAccessToken.resolves()
@@ -492,7 +474,7 @@ test.group('OAuthRefreshTokenGrantService | Unit', (group) => {
     const result = await service.handle(params, client)
 
     // Should succeed since no expiration means it never expires
-    assert.equal(result.access_token, 'new-access-token')
+    assert.equal(result.access_token, 'new-access-token-id')
     assert.equal(result.token_type, 'Bearer')
     assert.equal(result.expires_in, 3600)
     assert.equal(result.scope, 'database:read')

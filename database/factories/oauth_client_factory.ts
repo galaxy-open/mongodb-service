@@ -10,7 +10,8 @@ export const OAuthClientFactory = factory
     const clientSecretHash = await hash.make(clientSecret)
 
     return {
-      clientId: faker.string.uuid(),
+      // Use predictable UUID for testing consistency
+      id: faker.string.uuid(),
       clientSecretHash: clientSecretHash,
       clientName: faker.company.name(),
       redirectUris: ['https://example.com/callback'],

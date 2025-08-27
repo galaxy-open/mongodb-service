@@ -12,10 +12,10 @@ export default class JwkKeyRepository {
   }
 
   /**
-   * Retrieves a JwkKey instance by its kid (key ID).
+   * Retrieves a JwkKey instance by its UUID.
    */
-  public async findById(kid: string): Promise<JwkKey | null> {
-    return JwkKey.find(kid)
+  public async findById(keyId: string): Promise<JwkKey | null> {
+    return JwkKey.find(keyId)
   }
 
   /**
@@ -35,7 +35,7 @@ export default class JwkKeyRepository {
     return JwkKey.query()
       .where('is_active', true)
       .where('expires_at', '>', DateTime.now().toSQL())
-      .select(['kid', 'key_type', 'algorithm', 'use', 'public_key_data'])
+      .select(['id', 'key_type', 'algorithm', 'use', 'public_key_data'])
       .orderBy('created_at', 'desc')
   }
 
@@ -83,8 +83,8 @@ export default class JwkKeyRepository {
   /**
    * Updates an existing JwkKey instance.
    */
-  public async update(kid: string, data: Partial<JwkKey>): Promise<JwkKey | null> {
-    const modelInstance = await this.findById(kid)
+  public async update(keyId: string, data: Partial<JwkKey>): Promise<JwkKey | null> {
+    const modelInstance = await this.findById(keyId)
     if (!modelInstance) {
       return null
     }
@@ -96,8 +96,8 @@ export default class JwkKeyRepository {
   /**
    * Deactivates a key.
    */
-  public async deactivate(kid: string): Promise<JwkKey | null> {
-    return this.update(kid, { isActive: false })
+  public async deactivate(keyId: string): Promise<JwkKey | null> {
+    return this.update(keyId, { isActive: false })
   }
 
   /**
@@ -110,10 +110,10 @@ export default class JwkKeyRepository {
   }
 
   /**
-   * Deletes a JwkKey instance by its kid.
+   * Deletes a JwkKey instance by its UUID.
    */
-  public async delete(kid: string): Promise<void> {
-    const modelInstance = await this.findById(kid)
+  public async delete(keyId: string): Promise<void> {
+    const modelInstance = await this.findById(keyId)
     if (modelInstance) {
       await modelInstance.delete()
     }
@@ -127,30 +127,34 @@ export default class JwkKeyRepository {
   }
 
   /**
-   * Creates a new RSA signing key pair using AdonisJS services.
+   * Creates a new signing key using AdonisJS services (UUID generated automatically).
    */
-  public async createRSASigningKey(
-    kid: string,
+  public async createSigningKey(
     algorithm: string = 'HS256',
     expiresIn: number = 86400 * 30 // 30 days
   ): Promise<JwkKey> {
     const secretKey = string.random(64)
 
-    return this.create({
-      kid,
+    const key = await this.create({
       keyType: 'oct',
       algorithm,
       use: 'sig',
-      publicKeyData: {
-        kty: 'oct',
-        use: 'sig',
-        alg: algorithm,
-        kid,
-      },
+      publicKeyData: {},
       privateKeyPem: secretKey,
       isActive: true,
       expiresAt: DateTime.now().plus({ seconds: expiresIn }),
     })
+
+    // Update publicKeyData with the generated UUID as kid
+    key.publicKeyData = {
+      kty: 'oct',
+      use: 'sig',
+      alg: algorithm,
+      kid: key.id, // Use the auto-generated UUID as kid
+    }
+    await key.save()
+
+    return key
   }
 
   /**
@@ -159,10 +163,9 @@ export default class JwkKeyRepository {
   public async rotateSigningKey(): Promise<JwkKey> {
     const currentKey = await this.getCurrentSigningKey()
     if (currentKey) {
-      await this.deactivate(currentKey.kid)
+      await this.deactivate(currentKey.id)
     }
 
-    const newKid = `signing-${Date.now()}`
-    return this.createRSASigningKey(newKid)
+    return this.createSigningKey()
   }
 }

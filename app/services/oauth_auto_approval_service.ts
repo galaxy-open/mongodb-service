@@ -5,7 +5,6 @@ import { DateTime } from 'luxon'
 import type User from '#models/user'
 import type OAuthClient from '#models/oauth_client'
 import { OAuthParams } from '#validators/oauth_authorize'
-import CodeGeneratorService from '#services/code_generator_service'
 
 export interface AutoApprovalParams {
   user: User
@@ -16,10 +15,7 @@ export interface AutoApprovalParams {
 }
 @inject()
 export default class OAuthAutoApprovalService {
-  constructor(
-    private authCodeRepository: OAuthAuthorizationCodeRepository,
-    private codeGenerator: CodeGeneratorService
-  ) {}
+  constructor(private authCodeRepository: OAuthAuthorizationCodeRepository) {}
 
   /**
    * Auto-approve authorization, generate an authorization code, and return the final redirect URL.
@@ -32,12 +28,10 @@ export default class OAuthAutoApprovalService {
     scopes,
     organizationId,
   }: AutoApprovalParams): Promise<string> {
-    const code = this.codeGenerator.generateAuthorizationCode()
     const expiresAt = DateTime.now().plus({ minutes: 10 })
 
-    await this.authCodeRepository.create({
-      code, // The raw code repository will hash it
-      clientId: client.clientId,
+    const authCodeRecord = await this.authCodeRepository.create({
+      clientId: client.id,
       userId: user.id,
       organizationId, // Include organization context
       redirectUri: params.redirect_uri,
@@ -47,10 +41,10 @@ export default class OAuthAutoApprovalService {
       isUsed: false,
     })
 
-    logger.info(`Authorization code generated for user ${user.id}, client ${client.clientId}`)
+    logger.info(`Authorization code generated for user ${user.id}, client ${client.id}`)
 
     return this.buildRedirectUrl(params.redirect_uri, {
-      code,
+      code: authCodeRecord.id,
       state: params.state,
     })
   }

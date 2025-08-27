@@ -17,10 +17,10 @@ test.group('OAuthTokenService | Unit', (group) => {
   let refreshTokenGrantStub: sinon.SinonStubbedInstance<OAuthRefreshTokenGrantService>
 
   const mockClient = {
-    clientId: 'test-client',
+    id: 'test-client-uuid',
     accessTokenLifetime: 3600,
     refreshTokenLifetime: 86400,
-  } as OAuthClient
+  } as unknown as OAuthClient
 
   const authCodeTokenResponse = {
     access_token: 'auth-code-access-token',
@@ -246,7 +246,7 @@ test.group('OAuthTokenService | Unit', (group) => {
       redirect_uri: 'https://auth.app/callback',
     }
 
-    const authClient = { clientId: 'auth-client' } as OAuthClient
+    const authClient = { id: 'auth-client-uuid' } as unknown as OAuthClient
     clientValidatorStub.validateCredentials.resolves(authClient)
     authCodeGrantStub.handle.resolves(authCodeTokenResponse)
 
@@ -268,7 +268,7 @@ test.group('OAuthTokenService | Unit', (group) => {
       refresh_token: 'valid-refresh-token',
     }
 
-    const refreshClient = { clientId: 'refresh-client' } as OAuthClient
+    const refreshClient = { id: 'refresh-client-uuid' } as unknown as OAuthClient
     clientValidatorStub.validateCredentials.resolves(refreshClient)
     refreshTokenGrantStub.handle.resolves(refreshTokenResponse)
 

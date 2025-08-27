@@ -60,7 +60,7 @@ export default class OAuthAuthorizationService {
     }
 
     // Check if consent is needed
-    const needsConsent = await this.consentService.needsConsent(user.id, client.clientId, scopes)
+    const needsConsent = await this.consentService.needsConsent(user.id, client.id, scopes)
     if (!needsConsent) {
       const redirectUrl = await this.autoApprovalService.approve({
         user,

@@ -5,8 +5,12 @@ export default class extends BaseSchema {
 
   async up() {
     this.schema.createTable(this.tableName, (table) => {
-      table.string('code_hash').primary()
-      table.string('client_id').references('client_id').inTable('oauth_clients').onDelete('CASCADE')
+      table
+        .uuid('id')
+        .primary()
+        .defaultTo(this.db.rawQuery('gen_random_uuid()').knexQuery)
+        .notNullable()
+      table.uuid('client_id').references('id').inTable('oauth_clients').onDelete('CASCADE')
       table.uuid('user_id').references('id').inTable('users').onDelete('CASCADE')
       table
         .uuid('organization_id')

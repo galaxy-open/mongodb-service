@@ -5,7 +5,11 @@ export default class extends BaseSchema {
 
   async up() {
     this.schema.createTable(this.tableName, (table) => {
-      table.string('kid').primary().notNullable() // Key ID
+      table
+        .uuid('id')
+        .primary()
+        .defaultTo(this.db.rawQuery('gen_random_uuid()').knexQuery)
+        .notNullable()
       table.string('key_type').notNullable() // kty (RSA, EC)
       table.string('algorithm').notNullable() // alg (RS256, ES256)
       table.string('use').notNullable() // use (sig, enc)

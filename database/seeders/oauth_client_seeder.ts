@@ -11,7 +11,7 @@ export default class extends BaseSeeder {
       grantTypes: ['authorization_code', 'refresh_token'],
       redirectUris: [env.get('OAUTH_REDIRECT_URI', 'http://localhost:4000/api/oauth/callback')],
       clientName: env.get('TIP_NAME'),
-      clientId: env.get('OAUTH_CLIENT_ID'),
+      id: env.get('OAUTH_CLIENT_ID'),
       clientSecretHash: env.get('OAUTH_CLIENT_SECRET_HASH'),
     })
   }

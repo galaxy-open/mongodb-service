@@ -33,7 +33,7 @@ test.group('OAuthAuthorizationService | Unit', (group) => {
 
     fakeUser = await UserFactory.make()
     fakeClient = await OAuthClientFactory.merge({
-      clientId: fakeParams.client_id,
+      id: fakeParams.client_id,
       isTrusted: false,
     }).make()
 
@@ -50,7 +50,7 @@ test.group('OAuthAuthorizationService | Unit', (group) => {
 
   test('authorize :: should auto-approve and redirect for trusted clients', async ({ assert }) => {
     const trustedClient = await OAuthClientFactory.merge({
-      clientId: fakeParams.client_id,
+      id: fakeParams.client_id,
       isTrusted: true,
     }).make()
     const expectedRedirectUrl = 'https://client.app/callback?code=new-code'
@@ -97,11 +97,7 @@ test.group('OAuthAuthorizationService | Unit', (group) => {
 
     const expectedScopes = ['database:read', 'database:write']
     assert.isTrue(
-      consentServiceStub.needsConsent.calledOnceWith(
-        fakeUser.id,
-        fakeClient.clientId,
-        expectedScopes
-      )
+      consentServiceStub.needsConsent.calledOnceWith(fakeUser.id, fakeClient.id, expectedScopes)
     )
     assert.isTrue(
       autoApprovalServiceStub.approve.calledOnceWith({
@@ -180,7 +176,7 @@ test.group('OAuthAuthorizationService | Unit', (group) => {
     assert.isTrue(
       consentServiceStub.needsConsent.calledOnceWith(
         fakeUser.id,
-        fakeClient.clientId,
+        fakeClient.id,
         ['database:read'] // Default scope
       )
     )
